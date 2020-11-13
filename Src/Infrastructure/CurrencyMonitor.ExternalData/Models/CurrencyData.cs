@@ -1,4 +1,5 @@
-﻿using CurrencyMonitor.Core.Contracts;
+﻿using System;
+using CurrencyMonitor.Core.Contracts;
 
 namespace CurrencyMonitor.ExternalData.Models
 {
@@ -7,5 +8,7 @@ namespace CurrencyMonitor.ExternalData.Models
         public string Type { get; set; }
 
         public double Rate { get; set; }
+
+        public DateTime RatingDate { get; set; }
     }
 }

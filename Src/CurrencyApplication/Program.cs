@@ -40,8 +40,8 @@ namespace CurrencyMonitor.Application
                 var currencySubscribeService = serviceProvider.GetService<ICurrencySubscribeService>();
                 var notifier = serviceProvider.GetService<INotifier>();
 
-                var currencyType = "RUB";
-                var currencyTypes = new List<string> { "RUB", "USD", "EUR", "CNY" };
+                var mainCurrencyType = "RUB";
+                var watchCurrencyTypes = new List<string> { "USD", "EUR" }; // "EUR", "CNY"
 
                 var startDate = DateTime.Today.AddMonths(-1);
                 var endDate = DateTime.Today;
@@ -52,10 +52,10 @@ namespace CurrencyMonitor.Application
                 LoadLastData(currencyExternalService, currencyDataService);
 
                 var allPeriodHistory = currencyDataService.GetData(startDate, endDate);
-                var history = allPeriodHistory.Where(p => p.Type == currencyType).ToList();
+                var history = allPeriodHistory.Where(p => watchCurrencyTypes.Contains(p.Type) || p.Type == mainCurrencyType).ToList();
                 var today = history.Where(p => p.RatingDate == DateTime.Today);
 
-                var message = currencyAnalysisService.Verdict(currencyType, today, history);
+                var message = currencyAnalysisService.Verdict(mainCurrencyType, watchCurrencyTypes, today, history);
 
                 if (!string.IsNullOrEmpty(message))
                 {

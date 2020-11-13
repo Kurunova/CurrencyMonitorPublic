@@ -1,29 +1,52 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using CurrencyMonitor.Core.Contracts;
 
 namespace CurrencyMonitor.Core.Services
 {
     public class CurrencyAnalysisService : ICurrencyAnalysisService
     {
-        public string Verdict(string currencyType, IEnumerable<ICurrencyData> data, IEnumerable<ICurrencyData> history)
+        public string Verdict(string mainCurrencyType, IEnumerable<string> currencyTypes, IEnumerable<ICurrencyData> data, IEnumerable<ICurrencyData> history)
         {
-            var currentCurrency = data.FirstOrDefault(p => p.Type == currencyType);
-            var currentCurrencyHistory = history.Where(p => p.Type == currencyType);
-            var rates = currentCurrencyHistory.Select(p => p.Rate).ToList();
+            var result = new StringBuilder();
+            foreach (var currencyType in currencyTypes)
+            {
+                var mainCurrency = data.FirstOrDefault(p => p.Type == mainCurrencyType);
+                var watchCurrency = data.FirstOrDefault(p => p.Type == currencyType);
+                var currentCurrencyRate = mainCurrency.Rate / watchCurrency.Rate;
+
+                var mainCurrencyHistory = history.Where(p => p.Type == mainCurrencyType);
+                var watchCurrencyHistory = history.Where(p => p.Type == currencyType);
+
+                var joinHistory = mainCurrencyHistory.Join(
+                    watchCurrencyHistory, 
+                    main => main.RatingDate, 
+                    watch => watch.RatingDate, 
+                    (main, watch) => new { watch.RatingDate, MainRate = main.Rate, WatchRate = watch.Rate }).ToList();
+
+                var rates = joinHistory.Select(p => p.MainRate / p.WatchRate).ToList();
+                
+                var verdict = CurrencyVerdict(watchCurrency.Type, currentCurrencyRate, rates);
+                result.AppendLine(verdict);
+            }
+
+            return result.ToString();
+        }
+
+        private string CurrencyVerdict(string currencyType, double currencyRate, List<double> rates)
+        {
             var rateSum = rates.Sum(p => p);
             var average = rateSum / rates.Count;
-
-            var rat = history.OrderBy(p => p.Rate);
 
             var rateMin = rates.Min(p => p);
             var rateMax = rates.Max(p => p);
             var middle = (rateMax + rateMin) / 2;
 
-            string verdict = currentCurrency.Rate < average ? "МОЖНО ПОКУПАТЬ\r\n" : "";
-            string message = currentCurrency.Rate < average ? "меньше" : "больше";
+            string verdict = currencyRate < average ? $"МОЖНО ПОКУПАТЬ {currencyType}\r\n" : "";
+            string message = currencyRate < average ? "меньше" : "больше";
 
-            var result = $"{verdict}Курс {currentCurrency.Rate:C} {message} среднего (min={rateMin:C}, max={rateMax:C}, count={rates.Count}).\r\naverage={average:C}\r\nmiddle={middle:C}";
+            var result = $"{verdict}Курс {currencyType} {currencyRate:F} {message} среднего average={average:F}, middle={middle:F}. \r\n(min={rateMin:F}, max={rateMax:F}, count={rates.Count})";
 
             return result;
         }
